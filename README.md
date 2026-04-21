@@ -469,7 +469,7 @@ git branch -M $(git remote show origin | grep "HEAD branch" | cut -d " " -f5) 2>
 4. 之后每次运行 `main.py`，程序都会自动调用推送脚本，无需人工干预。
 
 <details>
-<summary>🚨 点击展开：推送报错常见原因</summary>
+<summary>🚨 推送报错常见原因</summary>
 
 | 报错信息 | 原因 | 解决方法 |
 |----------|------|----------|
