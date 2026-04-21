@@ -147,7 +147,57 @@
 
 脚本自动完成：检测包管理器安装 Python3/pip/Git/curl、requests 库、创建 .gitignore、配置 cron 定时任务（整点 15 分对齐）。
 
-> **手动部署或详细说明**：如需手动安装依赖或自定义计划任务，请参考原文档详细步骤（此处保留，篇幅考虑略写，实际文件中原有手动部署内容不删）。
+<details>
+<summary>📝 手动部署详细步骤（点击展开）</summary>
+
+#### Windows 手动部署
+
+1. 安装 [Python 3](https://www.python.org/downloads/)（安装时务必勾选 “Add Python to PATH”）。
+2. 安装 [Git](https://git-scm.com/download/win)（默认选项即可）。
+3. 安装 [curl](https://curl.se/windows/)（选择适合你系统的版本，并将 curl.exe 所在目录添加到系统 PATH 环境变量）。
+4. 在项目目录地址栏输入 `cmd` 并回车，打开命令提示符，执行以下命令安装 Python 依赖：
+   ```cmd
+   pip install requests
+   ```
+5. （可选）手动创建计划任务：
+   - 按 `Win + R`，输入 `taskschd.msc` 打开任务计划程序。
+   - 点击右侧“创建任务”，按 `setup.ps1` 中的配置填写：
+     - 常规：名称 `Cloudflare IP 优选`，勾选“不管用户是否登录都要运行”和“使用最高权限运行”。
+     - 触发器：新建 → 开始任务“按预定计划” → 设置“一次”，开始时间为下一个整15分钟时刻；高级设置中勾选“重复任务间隔”，选择“15分钟”，持续时间“无限期”。
+     - 操作：新建 → 操作“启动程序”，程序或脚本填写 `python.exe` 的完整路径，添加参数填写 `main.py` 的完整路径，起始于填写项目目录。
+   - 点击确定，输入 Windows 登录密码保存。
+
+#### Linux 手动部署
+
+1. 安装系统依赖（以 Debian/Ubuntu 为例）：
+   ```bash
+   sudo apt update
+   sudo apt install -y python3 python3-pip git curl
+   ```
+   其他发行版请使用对应的包管理器（yum/dnf/pacman）安装同名软件包。
+
+2. 安装 Python 依赖：
+   ```bash
+   pip3 install requests
+   ```
+
+3. 赋予推送脚本执行权限（如果需要 GitHub 自动同步）：
+   ```bash
+   chmod +x git_sync.sh
+   ```
+
+4. （可选）手动添加 cron 定时任务：
+   ```bash
+   (crontab -l 2>/dev/null; echo "0,15,30,45 * * * * cd $(pwd) && /usr/bin/python3 $(pwd)/main.py >> $(pwd)/cron.log 2>&1") | crontab -
+   ```
+   如需修改运行频率，调整分钟字段即可（例如 `*/10` 表示每 10 分钟）。
+
+5. 验证 cron 任务是否添加成功：
+   ```bash
+   crontab -l
+   ```
+
+</details>
 
 ---
 
