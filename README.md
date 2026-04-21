@@ -330,25 +330,59 @@
 
 ---
 
-## ☁️ Cloudflare DNS 批量更新说明
+## ☁️ 配置 Cloudflare DNS 自动更新
 
-本工具支持将优选出的 IP 地址列表，以 **多 IP 轮询（Round-Robin）** 的方式自动更新到 Cloudflare DNS。每次运行时，脚本会：
+本工具支持将优选出的 IP 地址列表自动更新到 Cloudflare DNS 的同名 A 记录，实现解析层面的多 IP 轮询负载均衡。
 
-1. 查询目标子域名（例如 `cf-proxy.yourdomain.com`）下现有的所有 A 记录。
-2. **（新版优化）** 若启用了 `FILTER_IPV6_AVAILABILITY`，程序将从 **全部参与带宽测速的候选节点** 中，按测速结果从快到慢依次挑选落地 IPv4 的节点，最多选取 `GLOBAL_TOP_N`（或 `PER_COUNTRY_TOP_N`）个。这样可以充分利用候选池，避免因 `ip.txt` 中混有 IPv6 落地节点而导致 DNS 记录数量不足。
-3. 利用 Cloudflare 批量 API，**先删除所有旧记录，再为筛选出的节点创建同名 A 记录**。
-4. 整个过程在一个原子操作中完成，确保最终 DNS 记录与优选策略一致。
+### 第一步：获取 Cloudflare API Token 与 Zone ID
 
-**使用前提**：
-- 拥有 Cloudflare 账号，并将域名托管在 Cloudflare。
-- 创建具有 `Zone:DNS:Edit` 权限的 **API Token**（获取方法：Cloudflare 仪表盘 → 我的个人资料 → API 令牌 → 创建令牌 → 使用“编辑区域 DNS”模板）。
-- 获取域名的 **Zone ID**（在域名概览页面右侧可找到）。
+1. 按照 [获取必要令牌](#-获取必要令牌重要) 中的步骤获取 **Cloudflare API Token**（需具有 Zone:DNS:Edit 权限）。
+2. 在 Cloudflare 域名概览页面右侧复制您的 **Zone ID**。
 
-**注意事项**：
-- 免费套餐单次批量操作最多支持 200 条记录，通常足够使用。
-- 若候选池中落地 IPv4 节点总数不足目标数量，则更新实际可用的数量，不会强制凑满。
-- 全量替换策略在极短时间窗口内可能导致解析短暂为空，但对绝大多数应用场景无影响。
-- 如需完全避免服务中断，可自行修改代码为增量更新（只增删差异部分）。
+### 第二步：填写配置文件
+
+编辑 `config.json`，找到 Cloudflare DNS 配置部分，填入您的信息：
+
+```json
+"CF_ENABLED": true,
+"CF_API_TOKEN": "your_CF_API_TOKEN",
+"CF_ZONE_ID": "your_CF_ZONE_ID",
+"CF_DNS_RECORD_NAME": "your-domain.example.com",
+"CF_TTL": 60,
+"CF_PROXIED": false
+```
+
+| 参数 | 说明 |
+|------|------|
+| `CF_ENABLED` | 设为 `true` 启用 DNS 自动更新 |
+| `CF_API_TOKEN` | 上一步获取的 API Token |
+| `CF_ZONE_ID` | 上一步获取的 Zone ID |
+| `CF_DNS_RECORD_NAME` | 要更新的完整子域名 |
+| `CF_TTL` | DNS 记录 TTL（秒），免费套餐最低 120 |
+| `CF_PROXIED` | 是否启用 Cloudflare CDN 代理（橙色云朵），通常设为 `false` |
+
+> 💡 若不需要 DNS 更新功能，将 `CF_ENABLED` 设为 `false` 即可。
+
+### 第三步：测试运行
+
+1. 手动运行一次优选程序：`python main.py`（Windows）或 `python3 main.py`（Linux）。
+2. 程序运行结束后，观察控制台输出。若看到 `✅ Cloudflare DNS 批量更新成功！`，则配置成功。
+
+### 工作原理
+
+每次运行时，脚本会：
+
+1. 查询目标子域名下现有的所有 A 记录。
+2. 从带宽测速结果中按速度顺序挑选落地 IPv4 的节点（若启用 `FILTER_IPV6_AVAILABILITY`）。
+3. 利用 Cloudflare 批量 API **先删除所有旧记录，再创建新记录**，实现原子替换。
+
+### 注意事项
+
+- 免费套餐单次批量操作最多支持 200 条记录，足够使用。
+- 若候选池中落地 IPv4 节点不足目标数量，则更新实际可用的数量，不会强制凑满。
+- 全量替换在极短时间内可能导致解析短暂为空，但对绝大多数场景无影响。
+- 若需完全避免服务中断，可自行修改代码为增量更新（只增删差异部分）。
+```
 
 ---
 
