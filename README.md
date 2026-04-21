@@ -8,7 +8,7 @@
 
 > ⭐ **如果觉得好用，点个 Star 支持一下～**
 
-这是一个全自动的 **Cloudflare CDN 节点优选工具**。它通过 **TCP 延迟筛选** + **IP 可用性二次检测** + **真实带宽测速** 三重机制，从海量公开节点中筛选出当前网络环境下速度最快、可用性最高的 Cloudflare IP，并支持**自动更新至 Cloudflare DNS** 以及**同步至 GitHub 仓库**，同时支持微信实时通知。
+这是一个全自动的 **Cloudflare CDN 节点优选工具**。它通过 **TCP 延迟筛选** + **IP 可用性二次检测** + **真实带宽测速** + **IP 纯净度过滤** 四重机制，从海量公开节点中筛选出当前网络环境下速度最快、可用性最高、滥用评分最低的 Cloudflare IP，并支持**自动更新至 Cloudflare DNS** 以及**同步至 GitHub 仓库**，同时支持微信实时通知。
 
 > [!IMPORTANT]
 > **跨平台支持**：本工具同时兼容 **Windows** 和 **Linux** 操作系统。
@@ -25,6 +25,7 @@
 | ⚡ **TCP 连接测试** | 多线程并发测试 TCP 握手延迟，可自定义测试次数与成功率阈值，淘汰不稳定节点。 |
 | 🔍 **IP 可用性二次检测** | 调用专用 API 验证节点是否可正常代理请求，过滤“假通”节点。检测 API 失效时自动降级，不影响流程。**同时记录每个节点的落地 IP 类型（IPv4 / IPv6）**，供后续 DNS 更新环节使用。 |
 | 📶 **真实带宽测速** | 基于 `curl` 下载 Cloudflare 测速文件，实测节点吞吐量（Mbps），确保最终节点拥有最优带宽表现。 |
+| 🛡️ **IP 纯净度过滤** | 调用 `ipapi.is` 检测 IP 的滥用评分（abuser_score），过滤掉被标记为高风险的节点，进一步提升代理稳定性。 |
 | 🌍 **国家过滤前置** | 支持仅保留指定国家/地区的节点（如 HK、US、JP），**在 TCP 测试前即完成过滤**，大幅减少无效测试量。 |
 | ☁️ **Cloudflare DNS 自动更新** | 将优选出的 IP 列表批量更新至 Cloudflare DNS 的同名 A 记录，实现解析层面的自动负载均衡。**新版支持仅更新落地 IPv4 节点，且可从全部测速候选池中按速度递补，保证 DNS 记录数量最大化。** |
 | 📬 **微信实时通知** | 集成 **WxPusher**，任务启动、异常告警、结果摘要均可推送至微信，随时掌握运行状态。 |
@@ -40,7 +41,7 @@
 
 | 文件 | 说明 |
 | :--- | :--- |
-| `main.py` | **核心程序**：负责抓取节点、TCP 测试、可用性检测、带宽测速、保存结果、更新 DNS、推送 GitHub。 |
+| `main.py` | **核心程序**：负责抓取节点、TCP 测试、可用性检测、带宽测速、纯净度检测、保存结果、更新 DNS、推送 GitHub。 |
 | `config.json` | **配置文件**：所有运行参数均在此修改（含详细注释）。 |
 | `git_sync.ps1` | **Windows 推送脚本**：用于将 `ip.txt` 强制推送到 GitHub。 |
 | `git_sync.sh` | **Linux 推送脚本**：用于将 `ip.txt` 强制推送到 GitHub。 |
@@ -198,7 +199,7 @@ python3 main.py
 | `USE_GLOBAL_MODE` | `boolean` | `true` | **筛选模式**。<br>`true` = 全局优选模式（从所有节点中选出最优的 `GLOBAL_TOP_N` 个）。<br>`false` = 分国家优选模式（每个国家选出最优的 `PER_COUNTRY_TOP_N` 个）。 |
 | `GLOBAL_TOP_N` | `int` | `16` | 全局模式下最终保留的节点数量（仅在 `USE_GLOBAL_MODE=true` 时生效）。 |
 | `PER_COUNTRY_TOP_N` | `int` | `1` | 分国家模式下每个国家保留的节点数量（仅在 `USE_GLOBAL_MODE=false` 时生效）。 |
-| `BANDWIDTH_CANDIDATES` | `int` | `32` | **候选池大小**：从 TCP 测试通过者中选取前 N 个节点进入后续的可用性检测和带宽测速。增大该值可让更多节点参与最终竞争，但会延长总运行时间。 |
+| `BANDWIDTH_CANDIDATES` | `int` | `80` | **候选池大小**：从 TCP 测试通过者中选取前 N 个节点进入后续的可用性检测和带宽测速。增大该值可让更多节点参与最终竞争，但会延长总运行时间。 |
 
 ### TCP 连接测试参数
 
@@ -216,6 +217,8 @@ python3 main.py
 | `FILTER_IPV6_AVAILABILITY` | `boolean` | `true` | **（新版语义）** 是否在 **Cloudflare DNS 更新时** 过滤掉落地 IP 为 IPv6 的节点。设为 `true` 后，DNS 记录只会包含落地 IPv4 的节点，**但不会影响 `ip.txt` 的输出和带宽测速候选池**。 |
 | `AVAILABILITY_CHECK_API` | `string` | `"https://check-proxyip-api.cmliussss.net/check"` | 可用性检测 API 地址。一般无需修改，除非服务地址变更。 |
 | `AVAILABILITY_TIMEOUT` | `float` | `8.0` | 单次 API 请求的超时时间（秒）。 |
+| `AVAILABILITY_RETRY_MAX` | `int` | `2` | 可用性检测整体失败（通过率为0）时的最大重试轮数。 |
+| `AVAILABILITY_RETRY_DELAY` | `int` | `5` | 可用性检测重试间隔（秒）。 |
 
 ### 带宽测速参数
 
@@ -223,7 +226,21 @@ python3 main.py
 | :--- | :--- | :--- | :--- |
 | `BANDWIDTH_SIZE_MB` | `int` | `1` | 测速下载文件大小（MB）。值越大测速越精准，但耗时越长。建议保持 1-5 MB。 |
 | `BANDWIDTH_TIMEOUT` | `float` | `5.0` | 单个节点的带宽测速超时时间（秒）。如果文件在规定时间内无法下载完成，则判定测速失败。 |
+| `BANDWIDTH_RETRY_MAX` | `int` | `2` | **带宽测速整体重试次数**。当一轮测速后**所有候选节点均失败**（无任何有效速度）时，程序将等待 `BANDWIDTH_RETRY_DELAY` 秒后重新执行测速，最多重复 `BANDWIDTH_RETRY_MAX` 轮。若全部轮次仍无结果，则发送微信通知并降级使用 TCP 排序节点。 |
+| `BANDWIDTH_RETRY_DELAY` | `int` | `5` | 带宽测速整体重试前的等待时间（秒）。 |
 | `BANDWIDTH_URL_TEMPLATE` | `string` | `"https://speed.cloudflare.com/__down?bytes={bytes}"` | 带宽测速 URL 模板，`{bytes}` 会被替换为 `BANDWIDTH_SIZE_MB * 1024 * 1024`。一般无需修改。 |
+
+### 纯净度检测参数（新增）
+
+| 参数 | 类型 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `ENABLE_IP_PURITY_CHECK` | `boolean` | `true` | 是否在带宽测速后对节点进行 **IP 纯净度检测**。要求 `company.abuser_score` 和 `asn.abuser_score` 均为 `Low`。 |
+| `IP_PURITY_API` | `string` | `"https://api.ipapi.is/"` | 纯净度检测 API 地址。 |
+| `IP_PURITY_WORKERS` | `int` | `10` | 纯净度检测的并发线程数。 |
+| `IP_PURITY_TIMEOUT` | `int` | `8` | 纯净度 API 请求超时（秒）。 |
+| `IP_PURITY_RETRY_MAX` | `int` | `2` | 纯净度检测整体失败时的最大重试轮数。 |
+| `IP_PURITY_RETRY_DELAY` | `int` | `5` | 纯净度检测重试间隔（秒）。 |
+| `IP_PURITY_FALLBACK` | `boolean` | `true` | 多次重试仍全部失败时是否降级使用原带宽测速结果。 |
 
 ### 并发控制参数
 
@@ -348,6 +365,7 @@ python3 main.py
 - **低延迟**：`main.py` 已经通过 TCP 握手筛选出了延迟最低的节点。
 - **高带宽**：结果经过真实 `curl` 下载测试，排在前面的节点具有更强的并发吞吐能力。
 - **高可用**：通过 `AVAILABILITY_CHECK_API` 过滤了那些能 Ping 通但无法正常通过代理请求的无效 IP。
+- **高纯净度**：通过 `ipapi.is` 排除了被标记为滥用的 IP，降低被目标网站屏蔽的风险。
 - **自动更新**：DNS 记录随优选结果自动刷新，无需手动修改配置。
 
 ---
@@ -367,8 +385,8 @@ python3 main.py
 2. **带宽测速被跳过**  
    请确保系统已安装 `curl` 且位于 PATH 环境变量中。
 
-3. **可用性检测全部失败**  
-   若 API 接口异常，程序会自动跳过此步骤并回退到 TCP 筛选结果，同时发送微信提醒（如已配置）。
+3. **可用性检测或纯净度检测全部失败**  
+   若 API 接口异常，程序会自动跳过此步骤并回退到 TCP 筛选结果，同时发送微信提醒（如已配置）。纯净度检测还可通过 `IP_PURITY_FALLBACK` 控制是否降级。
 
 4. **GitHub 推送失败**  
    - 检查 `git_sync.ps1` / `git_sync.sh` 中的 Token、用户名、仓库名是否正确。
@@ -396,6 +414,7 @@ python3 main.py
 
 - 节点数据源 & 检测 API：[cmliussss](https://github.com/cmliussss)
 - 微信通知服务：[WxPusher](https://wxpusher.zjiecode.com/)
+- IP 纯净度检测：[ipapi.is](https://ipapi.is/)
 
 ---
 
