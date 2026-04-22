@@ -253,9 +253,7 @@ python3 main.py
 | 参数 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
 | `FILTER_BLOCKED_COUNTRIES_ENABLED` | `boolean` | `true` | 是否在 DNS 更新阶段屏蔽特定国家的节点 |
-| `BLOCKED_COUNTRIES` | `array` | `["BD", "BI", "BY", "CD", "CF", "CN", "CU", "DE", "ET", "HK",
-    "IR", "KP", "LY", "MO", "NG", "NL", "PK", "RU", "SD", "SO",
-    "SY", "TH", "TW", "UA", "VE", "VN", "YE", "ZW"]` | DNS 更新时需要屏蔽的国家代码列表 |
+| `BLOCKED_COUNTRIES` | `array` | `["BD","BI","BY","CD","CF","CN","CU","DE","ET","HK","IR","KP","LY","MO","NG","NL","PK","RU","SD","SO","SY","TH","TW","UA","VE","VN","YE","ZW"]` | DNS 更新时需要屏蔽的国家代码列表 |
 
 > **说明**：  
 > - 该过滤**仅作用于 Cloudflare DNS 批量更新环节**，不会影响 `ip.txt` 的内容和 GitHub 推送。  
