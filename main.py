@@ -200,36 +200,78 @@ def send_wxpusher_notification(content, summary):
         print(f"⚠️ 微信通知异常: {e}")
 
 def fetch_nodes():
-    max_retries = FETCH_MAX_RETRIES
-    retry_delay = FETCH_RETRY_DELAY
+    """双模获取节点：支持云端下载与本地读取，用户手动选择"""
+    print("\n" + "="*35)
+    print(" 🚀 请选择本次测速的 IP 数据源：")
+    print(" 1. 跑原项目云端库 (自动下载最新)")
+    print(" 2. 跑本地私有库 (ipv4.txt 或 ipv4.csv)")
+    print("="*35)
+    
+    try:
+        choice = input("请输入数字 (1 或 2) 并按回车 (默认1): ").strip()
+    except EOFError:
+        # 防止在无交互环境(如 GitHub Actions)运行时卡死报错
+        print("\n检测到非交互环境，默认选择 1 (云端)。")
+        choice = "1"
 
-    for attempt in range(1, max_retries + 1):
+    nodes = []
+    if choice == "2":
+        # ---------------- 模式 2：本地读取 ----------------
+        target_file = "ipv4.txt"
         try:
-            print(f"正在请求 {JSON_URL} (尝试 {attempt}/{max_retries}) ...")
-            resp = requests.get(JSON_URL, timeout=(FETCH_CONNECT_TIMEOUT, FETCH_TIMEOUT))
-            resp.raise_for_status()
-            lines = [line.strip() for line in resp.text.splitlines() if line.strip() and not line.startswith('#')]
-            nodes = []
-            for line in lines:
-                if NODE_LINE_PATTERN.match(line):
-                    nodes.append(line)
-                else:
-                    print(f"警告：跳过格式不正确的行：{line}")
-            print(f"成功解析 {len(nodes)} 个节点。")
-            return nodes
-
-        except Exception as e:
-            print(f"请求或解析失败: {e}")
-            if attempt < max_retries:
-                print(f"等待 {retry_delay} 秒后重试...")
-                time.sleep(retry_delay)
-            else:
-                print(f"已尝试 {max_retries} 次，获取节点失败，退出。")
-                send_wxpusher_notification(
-                    content=f"获取 Cloudflare IP 列表失败，已重试 {max_retries} 次。错误：{e}",
-                    summary="获取 Cloudflare IP 列表失败"
-                )
+            f = open(target_file, "r", encoding="utf-8", errors="ignore")
+        except FileNotFoundError:
+            target_file = "ipv4.csv"
+            try:
+                f = open(target_file, "r", encoding="utf-8", errors="ignore")
+            except FileNotFoundError:
+                print("❌ 错误：当前目录下找不到 ipv4.txt 或 ipv4.csv！")
                 sys.exit(1)
+        
+        print(f"\n📂 正在读取本地 IP 库：{target_file} ...")
+        with f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'): continue
+                if re.match(r"^\d+\.\d+\.\d+\.\d+:\d+#[A-zA-Z]{2}$", line):
+                    nodes.append(line)
+                elif ',' in line:
+                    ip = line.split(',')[0].strip()
+                    if re.match(r"^\d+\.\d+\.\d+\.\d+$", ip): nodes.append(f"{ip}:443#XX")
+                elif re.match(r"^\d+\.\d+\.\d+\.\d+$", line):
+                    nodes.append(f"{line}:443#XX")
+        
+        # 顺手做一下去重，保持顺序
+        nodes = list(dict.fromkeys(nodes))
+        print(f"✅ 成功从本地提取了 {len(nodes)} 个去重后的节点。")
+        return nodes
+
+    else:
+        # ---------------- 模式 1：云端下载 ----------------
+        # 修复了原代码中 config.get 变量名未定义的问题，改为 cfg.get
+        json_url = cfg.get("JSON_URL", "https://zip.cm.edu.kg/all.txt")
+            
+        print(f"\n☁️ 正在请求云端源 {json_url} ...")
+        max_retries = 5
+        for attempt in range(max_retries):
+            try:
+                response = requests.get(json_url, timeout=10)
+                response.raise_for_status()
+                for line in response.text.splitlines():
+                    line = line.strip()
+                    if line and re.match(r"^\d+\.\d+\.\d+\.\d+:\d+#[A-zA-Z]{2}$", line):
+                        nodes.append(line)
+                if nodes:
+                    # 顺手去重
+                    nodes = list(dict.fromkeys(nodes))
+                    print(f"✅ 成功从云端解析 {len(nodes)} 个去重后的节点。")
+                    return nodes
+            except Exception as e:
+                print(f"⚠️ 请求失败 (尝试 {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1: time.sleep(5)
+        print("❌ 无法从远程获取节点，请检查网络！")
+        sys.exit(1)
+
 
 def test_tcp_latency(ip, port, timeout=TIMEOUT, probes=TCP_PROBES):
     min_latency = float("inf")
