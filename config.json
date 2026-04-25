@@ -116,7 +116,7 @@
     "DNS_UPDATE_TARGET_COUNT": 15,
     "_comment_DNS_UPDATE_TARGET_COUNT": "DNS 更新时目标 IP 数量（仅当调用时未指定时使用）",
 
-    "BANDWIDTH_SIZE_MB": 0.5,
+    "BANDWIDTH_SIZE_MB": 1,
     "_comment_BANDWIDTH_SIZE_MB": "带宽测速下载文件大小（MB）",
 
     "BANDWIDTH_TIMEOUT": 3,
