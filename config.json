@@ -74,10 +74,6 @@
             "enabled": true
         },
         {
-            "url": "https://raw.githubusercontent.com/HandsomeMJZ/cfip/refs/heads/main/best_ips.txt",
-            "enabled": true
-        },
-        {
             "url": "https://wtf-359.pages.dev/wtf.txt",
             "enabled": true
         }
