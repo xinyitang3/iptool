@@ -473,24 +473,49 @@ python3 main.py
 
 ### 第二步：初始化本地仓库并关联远程
 
-在项目根目录下打开终端（Windows 为 PowerShell，Linux 为终端），依次执行以下命令：
+> 💡 **如果你是通过网页下载的 ZIP 压缩包解压的**，必须执行以下全部命令。  
+> **如果你是用 `git clone` 命令下载的**，本地仓库已自动关联远程，可跳过此步，直接进入第三步。
 
-```bash
-# 1. 初始化 Git 仓库（如果尚未初始化）
+根据你的操作系统选择对应标签页的命令，**在项目根目录**下打开终端执行：
+
+#### **Windows（PowerShell）**
+
+```powershell
+# 1. 初始化仓库（若尚未初始化）
 git init
 
-# 2. 关联远程仓库（将下面网址中的 你的用户名 和 仓库名 替换成你自己的）
+# 2. 移除旧 origin 并添加你的远程地址（替换为你的仓库链接）
+$null = git remote remove origin 2>&1
+git remote add origin https://github.com/你的用户名/仓库名.git
+
+# 3. 拉取远程数据并切换到默认分支（先 main 后 master）
+git fetch origin
+$null = git checkout main 2>&1
+if ($LASTEXITCODE -ne 0) { $null = git checkout master 2>&1 }
+```
+
+#### **Linux （Bash）**
+
+```bash
+# 1. 初始化仓库（若尚未初始化）
+git init
+
+# 2. 移除旧 origin 并添加你的远程地址（替换为你的仓库链接）
 git remote remove origin 2>/dev/null
 git remote add origin https://github.com/你的用户名/仓库名.git
 
-# 3. 拉取远程默认分支名，并切换到该分支（自动对齐，无需手动指定 main/master）
+# 3. 拉取远程数据，对齐远程默认分支名
 git fetch origin
 git checkout -b temp-branch 2>/dev/null || git checkout main 2>/dev/null || git checkout master 2>/dev/null
 git branch -M $(git remote show origin | grep "HEAD branch" | cut -d " " -f5) 2>/dev/null || git branch -M main
 ```
 
-> 💡 **如果你是通过网页下载的 ZIP 压缩包解压的**，必须执行以上全部命令。  
-> **如果你是用 `git clone` 命令下载的**，则本地仓库已自动关联远程，可以跳过这一步，直接进入第三步。
+> ⚠️ **如果远程仓库是完全空的**（创建时未勾选任何初始化文件，无任何分支），上述命令会因没有可检出的分支而失败。  
+> **解决方法**：先手动创建一个初始提交再重试：
+> ```bash
+> git commit --allow-empty -m "init"
+> ```
+> 然后再次执行上面的第 3 步。
 
 ### 第三步：获取并填写 GitHub Token
 
