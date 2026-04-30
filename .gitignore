@@ -2,3 +2,6 @@
 git_sync.ps1
 git_sync.sh
 __pycache__/
+
+venv/
+ip.txt

@@ -16,7 +16,7 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 echo -e "${CYAN}========================================"
-echo -e " Cloudflare IP 优选工具 - Linux 部署"
+echo -e " Cloudflare IP 优选工具 - 部署脚本"
 echo -e "========================================${NC}\n"
 
 # 切换到脚本所在目录
@@ -73,9 +73,13 @@ elif command_exists dnf; then
 elif command_exists pacman; then
     PKG_MANAGER="pacman"
     INSTALL_CMD="sudo pacman -S --noconfirm"
+elif command_exists brew; then
+    PKG_MANAGER="brew"
+    INSTALL_CMD="brew install"
 else
     echo -e "${RED}❌ 未检测到支持的包管理器。${NC}"
     echo -e "请手动安装以下软件：python3, pip, git, curl"
+    echo -e "或者安装 Homebrew (macOS): /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
     echo -e "然后重新运行本脚本。"
     exit 1
 fi
@@ -130,30 +134,63 @@ fi
 
 echo ""
 
-# ---------- 2. 安装 Python 依赖 requests（智能跳过） ----------
-echo -e "${GREEN}[2/4] 检查 Python 包 requests...${NC}"
-if python3 -m pip show requests &> /dev/null; then
+# ---------- 2. 创建 Python 虚拟环境（venv） ----------
+echo -e "${GREEN}[2/4] 检查/创建 Python 虚拟环境...${NC}"
+VENV_DIR="$SCRIPT_DIR/venv"
+
+# 检查是否已存在虚拟环境
+if [ -d "$VENV_DIR" ]; then
+    echo -e "✅ 虚拟环境已存在: $VENV_DIR"
+else
+    echo -e "${YELLOW}正在创建虚拟环境...${NC}"
+    python3 -m venv "$VENV_DIR"
+    if [ -d "$VENV_DIR" ]; then
+        echo -e "${GREEN}✅ 虚拟环境创建成功。${NC}"
+    else
+        echo -e "${RED}❌ 虚拟环境创建失败，请手动创建: python3 -m venv venv${NC}"
+        exit 1
+    fi
+fi
+
+# 激活虚拟环境并设置路径
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS/Linux
+    source "$VENV_DIR/bin/activate"
+    VENV_PYTHON="$VENV_DIR/bin/python"
+    VENV_PIP="$VENV_DIR/bin/pip"
+else
+    # Windows（虽然脚本主要用于 Unix-like 系统）
+    source "$VENV_DIR/Scripts/activate"
+    VENV_PYTHON="$VENV_DIR/Scripts/python"
+    VENV_PIP="$VENV_DIR/Scripts/pip"
+fi
+echo ""
+
+# ---------- 3. 安装 Python 依赖 requests（智能跳过） ----------
+echo -e "${GREEN}[3/4] 检查 Python 包 requests...${NC}"
+if "$VENV_PIP" show requests &> /dev/null; then
     echo -e "✅ requests 已安装，跳过。"
 else
     echo -e "${YELLOW}正在安装 requests...${NC}"
-    python3 -m pip install --upgrade pip --quiet
-    python3 -m pip install requests --quiet
-    if python3 -m pip show requests &> /dev/null; then
+    "$VENV_PIP" install --upgrade pip --quiet
+    "$VENV_PIP" install requests --quiet
+    if "$VENV_PIP" show requests &> /dev/null; then
         echo -e "${GREEN}✅ requests 库安装完成。${NC}"
     else
-        echo -e "${RED}❌ requests 安装失败，请手动执行: pip3 install requests${NC}"
+        echo -e "${RED}❌ requests 安装失败，请手动执行: $VENV_PIP install requests${NC}"
         exit 1
     fi
 fi
 echo ""
 
-# ---------- 3. 创建 .gitignore 保护隐私 ----------
-echo -e "${GREEN}[3/4] 创建 .gitignore...${NC}"
+# ---------- 4. 创建 .gitignore 保护隐私 ----------
+echo -e "${GREEN}[4/5] 创建 .gitignore...${NC}"
 cat > .gitignore << 'EOF'
 config.json
 git_sync.ps1
 git_sync.sh
 __pycache__/
+venv/
 EOF
 echo -e "✅ .gitignore 已创建\n"
 
@@ -163,8 +200,8 @@ if [ ! -f "$PYTHON_SCRIPT" ]; then
     exit 1
 fi
 
-# ---------- 4. 配置 cron 定时任务（对齐 Windows 的下个整5分开始 + 每5分钟重复） ----------
-echo -e "${GREEN}[4/4] 配置定时任务（每${TASK_INTERVAL_MINUTES}分钟运行一次）...${NC}"
+# ---------- 5. 配置 cron 定时任务（对齐 Windows 的下个整5分开始 + 每5分钟重复） ----------
+echo -e "${GREEN}[5/5] 配置定时任务（每${TASK_INTERVAL_MINUTES}分钟运行一次）...${NC}"
 
 # 计算下一个整 5 分钟时刻（用于显示）
 calc_next_aligned() {
@@ -185,7 +222,7 @@ echo -e "   首次运行将发生在: ${CYAN}$NEXT_RUN${NC}（之后每 ${TASK_I
 
 # 构建 cron 表达式：分钟字段为 */5（每5分钟）
 CRON_MINUTE_FIELD="*/5"
-PYTHON_PATH=$(which python3)
+PYTHON_PATH="$VENV_PYTHON"
 
 # 智能检测优先级前缀（对齐 Windows 的高优先级逻辑）
 if [[ $EUID -eq 0 ]]; then
@@ -236,7 +273,7 @@ read -p "是否立即运行一次 main.py 进行测试？(y/N) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo -e "${CYAN}正在运行 main.py ...${NC}"
-    python3 "$PYTHON_SCRIPT"
+    "$VENV_PYTHON" "$PYTHON_SCRIPT"
 fi
 
 exit 0
