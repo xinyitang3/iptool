@@ -23,7 +23,7 @@
 ### 📍 快速导航
 - 🚀 [我要部署](#-部署步骤)（Windows / Linux 命令对照）
 - 🔐 [我要获取 Token](#-获取必要令牌重要)（GitHub / Cloudflare / WxPusher 三合一教程）
-- ⚙️ [我要调整参数](#%EF%B8%8F-配置说明完整参数详解)
+- ⚙️ [我要调整参数](#-配置说明完整参数详解)
 - ☁️ [我要配置 Cloudflare DNS](#%EF%B8%8F-配置-cloudflare-dns-自动更新)
 - 📤 [我要配置 GitHub 同步](#-配置-github-自动同步)
 - 🔧 [Fork 后无法推送？一键修复](#-fork-后无法推送一键修复)
