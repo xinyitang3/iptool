@@ -343,6 +343,8 @@ python3 main.py
 | `ENABLE_LOGGING` | `boolean` | `false` | 是否启用运行日志（每次运行覆盖 LOG_FILE） |
 | `LOG_FILE` | `string` | `"cfnb.log"` | 运行日志文件名（仅在启用日志时生效） |
 
+> 内置三个数据源：`cm.edu.kg` 来自 [cmliussss](https://github.com/cmliussss)，两个 `pages.dev` 来自本仓库。
+
 <details>
 <summary>🔧 高级参数（可用性 / 带宽 / 并发 / 重试 / 广告）</summary>
 
