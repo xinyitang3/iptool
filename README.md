@@ -41,9 +41,8 @@
 | 🔍 **可用性二次检测** | API 验证代理能力 |
 | 📶 **真实带宽测速** | curl 下载测速，实测吞吐量 |
 | 🧩 **多源自适应聚合** | 支持多个数据源，自动识别并解析任意格式（标准代码、中文名、emoji国旗、JSON等），统一转换为标准格式 |
-| ⚙️ **前置过滤（按序执行）** | TCP 测试前按序：端口过滤 → 黑名单过滤 → 白名单过滤（均可开关） |
-| 🚫 **DNS 黑名单** | DNS 更新时剔除指定国家节点（**仅作用于 DNS 更新环节**） |
-| 🛡️ **IPv6 落地过滤** | 过滤落地仅 IPv6 的节点，保留 IPv4/双栈节点（**仅作用于 DNS 更新环节**） |
+| 🚫 **屏蔽国家过滤** | DNS 更新时屏蔽指定国家（**仅作用于 DNS 更新环节**） |
+| 🌍 **国家过滤前置** | TCP 测试前即过滤指定国家（减少无效测试） |
 | ☁️ **Cloudflare DNS 更新** | 批量替换同名 A 记录 |
 | 📬 **微信实时通知** | 集成 WxPusher，异常/结果推送 |
 | 🔄 **定时自动运行** | Windows 计划任务 / Linux cron，每 5 分钟 |
@@ -259,7 +258,6 @@ python3 main.py
 | `GLOBAL_TOP_N` | `int` | `15` | 全局模式保留节点数 |
 | `PER_COUNTRY_TOP_N` | `int` | `1` | 分国家模式每国保留节点数 |
 | `BANDWIDTH_CANDIDATES` | `int` | `90` | 进入测速的候选节点数 |
-| `DNS_UPDATE_TARGET_COUNT` | `int` | `15` | DNS 更新时写入的最大 IP 数量，独立于筛选模式 |
 
 ### TCP 连接测试参数
 
@@ -271,33 +269,24 @@ python3 main.py
 | `SOCKET_DEFAULT_TIMEOUT` | `int` | `3` | 全局 Socket 默认超时（秒），防止永久阻塞 |
 | `PROGRESS_PRINT_INTERVAL` | `float` | `1` | 进度打印刷新间隔（秒），避免频繁 I/O |
 
-### 前置过滤参数（TCP 测试前生效）
+### 国家过滤参数（前置优化）
 
 | 参数 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `PRE_FILTER_PORT_ENABLED` | `boolean` | `true` | 是否启用前置端口过滤 |
-| `PRE_FILTER_PORTS` | `array` | `[443]` | TCP 测试前允许的端口列表（可多个） |
-| `PRE_FILTER_BLOCKED_ENABLED` | `boolean` | `true` | 是否启用前置黑名单过滤 |
-| `PRE_FILTER_BLOCKED_COUNTRIES` | `array` | `["CN"]` | 前置黑名单国家代码列表（TCP 测试前剔除） |
-| `FILTER_COUNTRIES_ENABLED` | `boolean` | `false` | 是否启用前置白名单过滤 |
-| `ALLOWED_COUNTRIES` | `array` | `["US"]` | 前置白名单国家代码列表（仅在开关开启时生效） |
+| `FILTER_COUNTRIES_ENABLED` | `boolean` | `false` | 是否启用国家过滤 |
+| `ALLOWED_COUNTRIES` | `array` | `["US"]` | 允许的国家代码列表 |
 
-> 💡 过滤执行顺序：**前置端口过滤 → 前置黑名单 → 前置白名单**。  
-> 所有前置过滤均在 TCP 测试前完成，可大幅减少无效测试。
-
-### DNS 黑名单参数（仅作用于 DNS 更新环节）
+### 屏蔽国家过滤参数（仅作用于 DNS 更新）
 
 | 参数 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `FILTER_BLOCKED_COUNTRIES_ENABLED` | `boolean` | `true` | DNS 更新时是否启用黑名单过滤 |
-| `BLOCKED_COUNTRIES` | `array` | `BD, BI, BY, CD, CF, CN, CU, DE, ET, HK,`<br>`IR, KP, LY, MO, NG, NL, PK, RU, SD, SO,`<br>`SY, TH, TW, UA, VE, VN, YE, ZW` | DNS 更新时需要剔除的国家代码列表（共 28 个） |
+| `FILTER_BLOCKED_COUNTRIES_ENABLED` | `boolean` | `true` | 是否在 DNS 更新阶段屏蔽特定国家的节点 |
+| `BLOCKED_COUNTRIES` | `array` | `BD, BI, BY, CD, CF, CN, CU, DE, ET, HK,`<br>`IR, KP, LY, MO, NG, NL, PK, RU, SD, SO,`<br>`SY, TH, TW, UA, VE, VN, YE, ZW` | DNS 更新时需要屏蔽的国家代码列表（共 28 个） |
+| `DNS_UPDATE_TARGET_COUNT` | `int` | `15` | DNS 更新时目标 IP 数量（仅当调用时未指定时使用） |
 
 > **说明**：  
 > - 该过滤**仅作用于 Cloudflare DNS 批量更新环节**，不会影响 `ip.txt` 的内容和 GitHub 推送。  
-> - DNS 更新时会**同时应用以下条件**，只有全部满足的节点才会写入 DNS：  
->   - 端口必须为 `443`  
->   - 落地不能仅为 IPv6（即保留 IPv4 或双栈节点，需开启 `FILTER_IPV6_AVAILABILITY`）  
->   - 国家不在 `BLOCKED_COUNTRIES` 黑名单中（需开启 `FILTER_BLOCKED_COUNTRIES_ENABLED`）
+> - DNS 更新过滤顺序：**端口 443 → IPv6 落地 → 屏蔽国家**。
 
 ### 微信通知（WxPusher）参数
 
@@ -341,10 +330,10 @@ python3 main.py
 | `FETCH_CONNECT_TIMEOUT` | `int` | `3` | 获取节点列表连接超时（秒） |
 | `OUTPUT_FILE` | `string` | `"ip.txt"` | 最终结果保存文件名 |
 | `ENABLE_LOGGING` | `boolean` | `false` | 是否启用运行日志（每次运行覆盖 LOG_FILE） |
-| `LOG_FILE` | `string` | `"cfnb.log"` | 运行日志文件名（仅在启用日志时生效） |
+| `LOG_FILE` | `string` | `"cfn.log"` | 运行日志文件名（仅在启用日志时生效） |
 
 <details>
-<summary>🔧 高级参数（可用性 / 带宽 / 并发 / 重试 / 广告）</summary>
+<summary>🔧 高级参数（可用性 / 带宽 / 并发 / 重试）</summary>
 
 **可用性检测参数**
 
@@ -364,7 +353,7 @@ python3 main.py
 
 | 参数 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `BANDWIDTH_SIZE_MB` | `float` | `0.5` | 测速下载文件大小（MB） |
+| `BANDWIDTH_SIZE_MB` | `int` | `0.5` | 测速下载文件大小（MB） |
 | `BANDWIDTH_TIMEOUT` | `int` | `3` | 单个节点带宽测速超时（秒） |
 | `BANDWIDTH_RETRY_MAX` | `int` | `2` | 带宽测速整体重试轮数 |
 | `BANDWIDTH_RETRY_DELAY` | `int` | `3` | 带宽测速重试间隔（秒） |
@@ -391,20 +380,6 @@ python3 main.py
 | `GITHUB_SYNC_RETRY_DELAY` | `int` | `3` | GitHub 推送重试间隔（秒） |
 | `GIT_SYNC_PROCESS_TIMEOUT` | `int` | `180` | Git 同步子进程最大运行时间（秒） |
 
-#### 广告植入参数
-
-| 参数 | 类型 | 默认值 | 说明 |
-| :--- | :--- | :--- | :--- |
-| `AD_HEADER_ENABLED` | `boolean` | `false` | 是否在 `ip.txt` 头部插入自定义广告行 |
-| `AD_HEADER_LINES` | `array` | `["0.0.0.0:443#格式 或纯文本1", "0.0.0.0:443#格式 或纯文本2"]` | 头部广告内容列表（可填任意格式） |
-| `AD_FOOTER_ENABLED` | `boolean` | `false` | 是否在 `ip.txt` 尾部插入自定义广告行 |
-| `AD_FOOTER_LINES` | `array` | `["0.0.0.0:443#格式 或纯文本3", "0.0.0.0:443#格式 或纯文本4"]` | 尾部广告内容列表（可填任意格式） |
-| `AD_PERLINE_ENABLED` | `boolean` | `false` | 是否在每行节点末尾追加固定文本 |
-| `AD_PERLINE_TEXT` | `string` | `" 纯文本"` | 追加到每行节点末尾的文本 |
-
-> 💡 三个开关完全独立，头部/尾部可为多条，行尾为单条固定文本。  
-> 开启后只会改变 `ip.txt` 内容，不影响 Cloudflare DNS 更新（DNS 仍使用纯净节点列表）。
-
 </details>
 
 > 💡 **快速配置建议**  
@@ -424,7 +399,9 @@ python3 main.py
 
 **重要说明**：  
 - `ip.txt` 中保存的是**基于带宽测速排序的结果**，以确保 GitHub 推送的节点列表完整且不丢失任何高速 IP。  
-- Cloudflare DNS 批量更新环节会额外应用 `FILTER_IPV6_AVAILABILITY`（过滤落地 IPv6）、`BLOCKED_COUNTRIES`（屏蔽特定国家）两项过滤，仅将符合条件的 IP 写入 DNS 记录。
+- Cloudflare DNS 批量更新环节会额外应用 `FILTER_IPV6_AVAILABILITY`（过滤落地 IPv6）和 `BLOCKED_COUNTRIES`（屏蔽特定国家）两项过滤，仅将符合条件的 IP 写入 DNS 记录。
+
+若你已配置 GitHub 自动同步，该文件将自动推送至远程仓库，订阅链接请参考 [配置 GitHub 自动同步](#-配置-github-自动同步) 章节末尾。
 
 ---
 
@@ -589,7 +566,7 @@ git branch -M $(git remote show origin | grep "HEAD branch" | cut -d " " -f5) 2>
 > [!WARNING]
 > **关于私有仓库的特别提醒**
 > 
-> 如果你将仓库设置为 **Private（私有）**，则通过 Raw 链接访问 `ip.txt` 时必须在 URL 后附加 `?token=xxxxxx` 参数才能获取内容，例如：
+> 如果你将仓库设置为 **Private（私有）**，则通过 Raw 链接访问 `ip.txt` 时必须在 URL 后附加 `?token=你的令牌` 参数才能获取内容，例如：
 > ```text
 > https://raw.githubusercontent.com/用户名/仓库名/refs/heads/分支名/ip.txt?token=xxxxxx
 > ```
@@ -740,8 +717,8 @@ git branch -M $(git remote show origin | grep "HEAD branch" | cut -d " " -f5) 2>
    - 检查 `CF_API_TOKEN` 权限、`CF_ZONE_ID`、`CF_DNS_RECORD_NAME` 是否正确。  
    - 程序内置重试机制，全部失败时会通过微信通知（如已启用）。
 
-9. **为什么我的 DNS 记录数量少于 `DNS_UPDATE_TARGET_COUNT`？**  
-   如果你启用了 `FILTER_IPV6_AVAILABILITY`，且候选池中符合端口、落地类型、国家过滤等条件的节点总数不足你设定的 DNS 更新目标数量，则 DNS 只会更新实际可用的节点数。这是正常现象，你可以通过增加 `BANDWIDTH_CANDIDATES` 来扩大候选池。
+9. **为什么我的 DNS 记录数量少于 `GLOBAL_TOP_N`？**  
+   如果你启用了 `FILTER_IPV6_AVAILABILITY`，且候选池中落地 IPv4 的节点总数不足目标数量，则 DNS 只会更新实际可用的节点数。这是正常现象，你可以通过增加 `BANDWIDTH_CANDIDATES` 来扩大候选池。
 
 </details>
 

@@ -1,4 +1,8 @@
-﻿config.json
+config.json
 git_sync.ps1
 git_sync.sh
+ip.txt
+cron.log
+PROBLEMS_AND_SOLUTIONS.md
 __pycache__/
+venv/

@@ -28,25 +28,13 @@
     "PROGRESS_PRINT_INTERVAL": 1,
     "_comment_PROGRESS_PRINT_INTERVAL": "进度打印刷新间隔（秒），避免频繁 I/O",
 
-    "FILTER_COUNTRIES_ENABLED": false,
-    "_comment_FILTER_COUNTRIES_ENABLED": "前置白名单开关（true=仅保留下方 ALLOWED_COUNTRIES 中的国家，其余在 TCP 测试前剔除）",
+    "FILTER_COUNTRIES_ENABLED": true,
+    "_comment_FILTER_COUNTRIES_ENABLED": "是否启用国家过滤（仅保留指定国家的节点）",
 
-    "ALLOWED_COUNTRIES": ["US"],
-    "_comment_ALLOWED_COUNTRIES": "前置白名单列表（仅在 FILTER_COUNTRIES_ENABLED=true 时生效）",
+    "ALLOWED_COUNTRIES": ["TW", "SG", "HK", "KR", "JP"],
+    "_comment_ALLOWED_COUNTRIES": "允许的国家代码列表（如 US, JP），仅在 FILTER_COUNTRIES_ENABLED=true 时生效",
 
-    "PRE_FILTER_BLOCKED_ENABLED": true,
-    "_comment_PRE_FILTER_BLOCKED_ENABLED": "前置黑名单开关（true=在TCP测试前剔除下方国家）",
-
-    "PRE_FILTER_BLOCKED_COUNTRIES": ["CN"],
-    "_comment_PRE_FILTER_BLOCKED_COUNTRIES": "前置屏蔽的国家代码列表，不受白名单影响",
-
-    "PRE_FILTER_PORT_ENABLED": true,
-    "_comment_PRE_FILTER_PORT_ENABLED": "是否在 TCP 测试前过滤端口（仅保留下方指定的端口）",
-
-    "PRE_FILTER_PORTS": [443],
-    "_comment_PRE_FILTER_PORTS": "TCP 测试前允许的端口列表（可多端口）",
-
-    "ENABLE_WXPUSHER": true,
+    "ENABLE_WXPUSHER": false,
     "_comment_ENABLE_WXPUSHER": "是否启用 WxPusher 微信通知",
 
     "WXPUSHER_APP_TOKEN": "your_app_token_here",
@@ -65,7 +53,7 @@
     "_comment_NOTIFY_CONNECT_TIMEOUT": "微信通知 API 连接超时（秒）",
 
     "_comment_cf_dns": "Cloudflare DNS 批量更新配置",
-    "CF_ENABLED": true,
+    "CF_ENABLED": false,
     "CF_API_TOKEN": "your_CF_API_TOKEN",
     "CF_ZONE_ID": "your_CF_ZONE_ID",
     "CF_DNS_RECORD_NAME": "your_CF_DNS_RECORD_NAME",
@@ -82,7 +70,7 @@
             "enabled": true
         },
         {
-            "url": "https://countrymerge.pages.dev/all.txt",
+            "url": "https://raw.githubusercontent.com/rjdsq/git-cf-api/refs/heads/main/max.txt",
             "enabled": true
         },
         {
@@ -135,17 +123,17 @@
     "_comment_FILTER_IPV6_AVAILABILITY": "【仅DNS】是否过滤落地为 IPv6 的节点",
 
     "FILTER_BLOCKED_COUNTRIES_ENABLED": true,
-    "_comment_FILTER_BLOCKED_COUNTRIES_ENABLED": "【仅DNS】黑名单开关（true=屏蔽下方 BLOCKED_COUNTRIES 中的国家）",
+    "_comment_FILTER_BLOCKED_COUNTRIES_ENABLED": "【仅DNS】是否屏蔽特定国家的节点",
 
     "BLOCKED_COUNTRIES": [
         "BD", "BI", "BY", "CD", "CF", "CN", "CU", "DE", "ET", "HK",
         "IR", "KP", "LY", "MO", "NG", "NL", "PK", "RU", "SD", "SO",
         "SY", "TH", "TW", "UA", "VE", "VN", "YE", "ZW"
     ],
-    "_comment_BLOCKED_COUNTRIES": "【仅DNS】黑名单国家代码列表（DNS 更新时剔除这些国家的节点）",
+    "_comment_BLOCKED_COUNTRIES": "【仅DNS】需要屏蔽的国家代码列表",
 
     "DNS_UPDATE_TARGET_COUNT": 15,
-    "_comment_DNS_UPDATE_TARGET_COUNT": "DNS 更新时写入的最大 IP 数量，独立于筛选模式",
+    "_comment_DNS_UPDATE_TARGET_COUNT": "DNS 更新时目标 IP 数量（仅当调用时未指定时使用）",
 
     "BANDWIDTH_SIZE_MB": 0.5,
     "_comment_BANDWIDTH_SIZE_MB": "带宽测速下载文件大小（MB）",
@@ -183,27 +171,8 @@
     "_comment_retry": "重试策略配置",
     "DNS_UPDATE_MAX_RETRIES": 3,
     "DNS_UPDATE_RETRY_DELAY": 3,
-    "GITHUB_SYNC_MAX_RETRIES": 3,
+    "GITHUB_SYNC_MAX_RETRIES": 5,
     "GITHUB_SYNC_RETRY_DELAY": 3,
     "GIT_SYNC_PROCESS_TIMEOUT": 180,
-    "_comment_GIT_SYNC_PROCESS_TIMEOUT": "Git 同步子进程最大运行时间（秒）",
-
-    "_comment_AD": "ip.txt 广告植入（开关独立）",
-    "AD_HEADER_ENABLED": false,
-    "_comment_AD_HEADER_ENABLED": "头部广告开关（可多行）",
-    "AD_HEADER_LINES": [
-        "0.0.0.0:443#格式 或纯文本1",
-        "0.0.0.0:443#格式 或纯文本2"
-    ],
-
-    "AD_FOOTER_ENABLED": false,
-    "_comment_AD_FOOTER_ENABLED": "尾部广告开关（可多行）",
-    "AD_FOOTER_LINES": [
-        "0.0.0.0:443#格式 或纯文本3",
-        "0.0.0.0:443#格式 或纯文本4"
-    ],
-
-    "AD_PERLINE_ENABLED": false,
-    "_comment_AD_PERLINE_ENABLED": "行尾追加开关",
-    "AD_PERLINE_TEXT": " 纯文本"
+    "_comment_GIT_SYNC_PROCESS_TIMEOUT": "Git 同步子进程最大运行时间（秒）"
 }
